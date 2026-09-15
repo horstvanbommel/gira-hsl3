@@ -238,9 +238,9 @@ Attribute:
 Bei jedem neuen Baustein hier eintragen, um Kollisionen zu vermeiden (`10700`–`10703` sind durch
 die Gira-Beispiele belegt):
 
-| ID | Verzeichnis (`src/...`) | Beschreibung |
-|----|--------------------------|--------------|
-| —  | —                        | (noch keine eigenen Bausteine angelegt) |
+| ID    | Verzeichnis (`src/...`)              | Beschreibung |
+|-------|---------------------------------------|--------------|
+| 10800 | `src/openmeteo_regenvorhersage/`     | OpenMeteo-Wetteranbindung: Regenmenge (mm) heute/morgen/Woche anhand von `lat`/`lng` |
 
 ## Referenzbeispiele
 

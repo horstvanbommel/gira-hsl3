@@ -1,0 +1,126 @@
+{
+  "module": {
+    "category": "Wetter",
+    "context": "HSL3OpenMeteoContext",
+    "id": "10800",
+    "name": "OpenMeteo Regenvorhersage",
+    "hsl_filename": "10800_openmeteo_regenvorhersage.hsl",
+    "version": "1.0",
+    "inputs": [
+      {
+        "type": "number",
+        "identifier": "lat",
+        "init_value": "0",
+        "label": "Breitengrad"
+      },
+      {
+        "type": "number",
+        "identifier": "lng",
+        "init_value": "0",
+        "label": "Längengrad"
+      },
+      {
+        "type": "number",
+        "identifier": "tage_rasen",
+        "init_value": "2",
+        "label": "Vorschautage Rasen"
+      },
+      {
+        "type": "number",
+        "identifier": "schwellwert_rasen_mm",
+        "init_value": "15",
+        "label": "Schwellwert Rasen (mm)"
+      },
+      {
+        "type": "number",
+        "identifier": "tage_beete",
+        "init_value": "3",
+        "label": "Vorschautage Beete"
+      },
+      {
+        "type": "number",
+        "identifier": "schwellwert_beete_mm",
+        "init_value": "20",
+        "label": "Schwellwert Beete (mm)"
+      }
+    ],
+    "outputs": [
+      {
+        "type": "number",
+        "identifier": "regen_summe_rasen_mm",
+        "init_value": 0,
+        "label": "Regensumme Rasen-Fenster (mm)"
+      },
+      {
+        "type": "number",
+        "identifier": "sperre_rasen",
+        "init_value": 0,
+        "label": "Sperre Bewässerung Rasen"
+      },
+      {
+        "type": "number",
+        "identifier": "regen_summe_beete_mm",
+        "init_value": 0,
+        "label": "Regensumme Beete-Fenster (mm)"
+      },
+      {
+        "type": "number",
+        "identifier": "sperre_beete",
+        "init_value": 0,
+        "label": "Sperre Bewässerung Beete"
+      }
+    ],
+    "stores": [],
+    "timers": [
+      {
+        "identifier": "timer_refresh"
+      }
+    ],
+    "scripts": [
+      {
+        "filename": "hsl3_10800_openmeteo_regenvorhersage.py"
+      }
+    ],
+    "translations": [
+      {
+        "language": "de",
+        "name": "OpenMeteo Regenvorhersage",
+        "category": "Wetter",
+        "translation_inputs": [
+          {
+            "label": "Breitengrad"
+          },
+          {
+            "label": "Längengrad"
+          },
+          {
+            "label": "Vorschautage Rasen"
+          },
+          {
+            "label": "Schwellwert Rasen (mm)"
+          },
+          {
+            "label": "Vorschautage Beete"
+          },
+          {
+            "label": "Schwellwert Beete (mm)"
+          }
+        ],
+        "translation_outputs": [
+          {
+            "label": "Regensumme Rasen-Fenster (mm)"
+          },
+          {
+            "label": "Sperre Bewässerung Rasen"
+          },
+          {
+            "label": "Regensumme Beete-Fenster (mm)"
+          },
+          {
+            "label": "Sperre Bewässerung Beete"
+          }
+        ]
+      }
+    ]
+  }
+}
