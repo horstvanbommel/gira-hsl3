@@ -1,0 +1,194 @@
+####################################################################################
+#   BS : Lamellen-Nachführung mit Manuell-Vorrang                                  #
+####################################################################################
+#   (C) 2006, Matthias Schmidt, v3.3.2                                             #
+#   Anpassungen 03/2026                                                            #
+#   - SN[6] wird erst nach Lamellen-Bewegung zurückgesetzt                         #
+#   - EC[10] ohne SN[6]-Prüfung, stattdessen Behangposition direkt                 #
+#   - Manuell-Erkennung ignoriert Endlage 100%                                     #
+#   Anpassungen 04/2026                                                            #
+#   - Initiale Abfahrt bei Jalousie (EN[12]==0) nur wenn EN[10] < EN[9]            #
+#   Anpassungen 07/2026                                                            #
+#   - Neuer Ausgang 5: Automatik-Flag SN[5] fuer Debugging pro Verschattung        #
+#   - EC[1]/Manuell-Vorrang Race Condition behoben (not EC[1], siehe ADR-007)      #
+#   - SN[5]-Reset bei Zyklus-Start von SN[3] entkoppelt (siehe ADR-008)            #
+####################################################################################
+
+5000|"Jalousie-Rolladen-Trennwand\Lamellen-Nachführung (19822)"|1|12|"Höhe (H)"|"Beschattung (B)"|"BZyklus (Z)"|"Mindeständerung in %"|"Waagrecht %"|"Senkrecht %"|"Wert bei Aus"|"Offset +/- Proz"|"Behang % bei Sonne"|"Behang Ist"|"Steuerung Behang (1=Behang AUF bei B = AUS)"|"Lamelle ist"|5|"Ausgang Lamelle% (sbC)"|"Ausgang Behang% (sBC)"|"Jal Auf/Ab"|"Statustext"|"Automatik aktiv (SN5)"|"V 3.3.2"
+
+5001|12|5|0|7|1
+
+#Eingänge EC / EN
+5002|1|0|0                # EN[1]  Inklination (Trigger alle ~2 Min von Sonnepur)
+5002|2|0|0                # EN[2]  Beschattung Ein/Aus
+5002|3|0|0                # EN[3]  Zyklus Ein/Aus
+5002|4|2|0                # EN[4]  Mindeständerung / Toleranz (%)
+5002|5|50|0               # EN[5]  Lamellenstellung waagrecht (%)
+5002|6|100|0              # EN[6]  Lamellenstellung senkrecht (%)
+5002|7|50|0               # EN[7]  Lamellenstellung bei Beschattung Aus (%)
+5002|8|0|0                # EN[8]  Offset Lamellenwinkel +/- (%)
+5002|9|90|0               # EN[9]  Behang-Zielposition bei Sonnenschutz (%)
+5002|10|0|0               # EN[10] Behang IST (%)
+5002|11|0|0               # EN[11] Steuerung Behang (1 = Behang AUF bei Beschattung AUS)
+5002|12|0|0               # EN[12] Lamelle IST (%) ? bei Jalousie nicht belegt (=0)
+#Ausgänge
+5004|1|0|0|2|0            # Ausgang Lamelle% (sBC)
+5004|2|0|0|1|0            # Ausgang Behang% (send)
+5004|3|0|1|1|0            # Ausgang Auf/Ab
+5004|4|""|0|2|1           # Ausgang Statustext
+5004|5|0|0|1|0            # Ausgang Automatik aktiv (SN[5], Debugging)
+#Speicher
+5003|1|0|0                # SN[1] = Lamelle ? letzter gesendeter Sollwert
+5003|2|0|0                # SN[2] = Lamelle ? aktuell berechneter Sollwert
+5003|3|0|0                # SN[3] = Behang in Zielposition (1 = ja, Toleranz 3%)
+5003|4|0|0                # SN[4] = Lamelle in Sonnenposition (1 = ja, Toleranz 2%)
+5003|5|1|0                # SN[5] = Automatik-Flag (1 = aktiv, 0 = manueller Vorrang)
+5003|6|0|0                # SN[6] = Abfahrt aktiv (1 = Behang/Lamelle führt, Manuell-Check pausiert)
+5003|7|0|0                # SN[7] = Lamellen-Zielwert während Abfahrt (für Reset-Prüfung)
+
+#--------------------------------------------------
+# Sollwertberechnung Lamelle
+#--------------------------------------------------
+
+# SN[2] berechnen: Wenn Sonne, dann Sonnenstand - wenn Schatten, dann EN[7]
+5012|0|"EN[2]==1"|"round(((float(90)-EN[1])*(float(EN[6]-EN[5])/float(90)))+EN[5]+EN[8])"|""|0|0|2|0
+5012|0|"EN[2]==0"|"EN[7]"|""|0|0|2|0
+5012|0|"SN[2]<=EN[5]"|"EN[5]"|""|0|0|2|0
+5012|0|"SN[2]>=EN[6]"|"EN[6]"|""|0|0|2|0
+
+# SN[3] = Behang in Zielposition
+5012|0|""|"int(abs(EN[9]-EN[10])<=3)"|""|0|0|3|0
+
+# SN[4] = Lamelle weicht vom Sollwert ab
+5012|0|"EN[12]==0"|"0"|""|0|0|4|0
+5012|0|"EN[12]>0 and EN[2]==1"|"int(abs(EN[12]-SN[2])>EN[4])"|""|0|0|4|0
+5012|0|"EN[12]>0 and EN[2]==0"|"int(abs(EN[12]-EN[7])>EN[4])"|""|0|0|4|0
+
+
+#--------------------------------------------------
+# Manuell-Vorrang-Erkennung
+# NUR wenn SN[6]==0 UND Lamelle NICHT bei 100% (Endlage nach Abfahrt)
+#--------------------------------------------------
+
+# Erkennt Abweichung vom aktuellen Automatik-Sollwert (SN[2])
+# Ignoriert den Umschaltmoment (not EC[2]), den Sonnenstand-Sprung (not EC[1]) und Endlagen (<98)
+5012|0|"EN[12]>0 and SN[6]==0 and EN[12]<98 and abs(EN[12]-SN[2])>EN[4] and not EC[2] and not EC[1]"|"0"|""|0|0|5|0
+
+# Szene/Hand faehrt in Endlage (>=99%): steigende Flanke bei Abweichung vom Sollwert -> Automatik AUS
+# Trennt Szene-nach-100% (EN[12] steigt) vom automatischen Verlassen der Endlage (EN[12] faellt)
+5012|0|"EN[12]>=99 and EN[12]>EA[12] and SN[6]==0 and abs(EN[12]-SN[2])>EN[4]"|"0"|""|0|0|5|0
+
+
+#--------------------------------------------------
+# Automatiksteuerung Behang
+# Jalousie (EN[12]==0): Abfahrt nur wenn EN[10] < EN[9]
+# Raffstore (EN[12]>0): Abfahrt immer wenn nicht in Zielposition
+#--------------------------------------------------
+
+# Automatik-Flag bei jedem Zyklus-Start unconditional reaktivieren (ADR-008)
+# Unabhaengig von SN[3]: SN[3] wird jeden Zyklus aus abs(EN[9]-EN[10])<=3 berechnet
+# (Zeile 59) und kann bei haengengebliebenem Behang faelschlich bereits 1 sein -
+# dann feuert die SN[3]==0-Regel unten nicht und SN[5] bliebe sonst dauerhaft auf 0
+5012|0|"EC[3] and EN[3]==1 and EA[3]==0"|"1"|""|0|0|5|0
+
+# Jalousie
+5012|0|"EC[3] and EN[3]==1 and EA[3]==0 and SN[3]==0 and EN[12]==0 and EN[10]<EN[9]"|"1"|""|0|0|6|0
+5012|0|"EC[3] and EN[3]==1 and EA[3]==0 and SN[3]==0 and EN[12]==0 and EN[10]<EN[9]"|"1"|""|0|0|5|0
+5012|0|"EC[3] and EN[3]==1 and EA[3]==0 and SN[3]==0 and EN[12]==0 and EN[2]==1 and EN[10]<EN[9]"|"SN[2]"|""|0|0|7|0
+5012|0|"EC[3] and EN[3]==1 and EA[3]==0 and SN[3]==0 and EN[12]==0 and EN[2]==0 and EN[10]<EN[9]"|"EN[7]"|""|0|0|7|0
+5012|0|"EC[3] and EN[3]==1 and EA[3]==0 and SN[3]==0 and EN[12]==0 and EN[10]<EN[9]"|"min(EN[9],100)"|""|2|0|0|0
+# Raffstore
+5012|0|"EC[3] and EN[3]==1 and EA[3]==0 and SN[3]==0 and EN[12]>0"|"1"|""|0|0|6|0
+5012|0|"EC[3] and EN[3]==1 and EA[3]==0 and SN[3]==0 and EN[12]>0"|"1"|""|0|0|5|0
+5012|0|"EC[3] and EN[3]==1 and EA[3]==0 and SN[3]==0 and EN[12]>0 and EN[2]==1"|"SN[2]"|""|0|0|7|0
+5012|0|"EC[3] and EN[3]==1 and EA[3]==0 and SN[3]==0 and EN[12]>0 and EN[2]==0"|"EN[7]"|""|0|0|7|0
+5012|0|"EC[3] and EN[3]==1 and EA[3]==0 and SN[3]==0 and EN[12]>0"|"min(EN[9],100)"|""|2|0|0|0
+# Beide - Behang auf
+5012|0|"EC[3] and EN[3]==0 and EA[3]==1"|"0"|""|3|0|3|0
+
+
+#--------------------------------------------------
+# Lamellennachführung ? Trigger: Behang erreicht Zielposition (EC[10])
+# OHNE SN[6]-Prüfung - feuert immer wenn Behang in Position OHNE Lamelle in Position
+#--------------------------------------------------
+
+# Beschattung AKTIV (EN[2]==1): Lamelle auf Sonnenstand, Flag auf 1
+5012|0|"EC[10] and abs(EN[9]-EN[10])<=3 and EN[2]==1 and EN[3]==1"|"round(SN[2])"|""|1|0|1|0
+5012|0|"EC[10] and abs(EN[9]-EN[10])<=3 and EN[2]==1 and EN[3]==1"|"round(SN[2])"|""|0|0|7|0
+5012|0|"EC[10] and abs(EN[9]-EN[10])<=3 and EN[2]==1 and EN[3]==1"|"1"|""|0|0|5|0
+
+# Beschattung AUS (EN[2]==0): Lamelle auf Ruheposition (EN[7]), Flag auf 1
+5012|0|"EC[10] and abs(EN[9]-EN[10])<=3 and EN[2]==0 and EN[3]==1"|"EN[7]"|""|1|0|1|0
+5012|0|"EC[10] and abs(EN[9]-EN[10])<=3 and EN[2]==0 and EN[3]==1"|"EN[7]"|""|0|0|7|0
+5012|0|"EC[10] and abs(EN[9]-EN[10])<=3 and EN[2]==0 and EN[3]==1"|"1"|""|0|0|5|0
+
+# Jalousie-Sonderfall (kein Lamellen-IST / EN[12]==0)
+5012|0|"EC[10] and abs(EN[9]-EN[10])<=3 and EN[2]==1 and EN[3]==1 and EN[12]==0"|"round(SN[2])"|""|1|0|1|0
+5012|0|"EC[10] and abs(EN[9]-EN[10])<=3 and EN[2]==0 and EN[3]==1 and EN[12]==0"|"EN[7]"|""|1|0|1|0
+
+
+#--------------------------------------------------
+# Abfahrt-Flag zurücksetzen - erst wenn Lamelle nicht mehr bei 100%
+#--------------------------------------------------
+
+5012|0|"EC[12] and SN[6]==1 and EN[12]>0 and EN[12]<98"|"0"|""|0|0|6|0
+5012|0|"EC[10] and SN[6]==1 and abs(EN[9]-EN[10])<=3 and EN[3]==1 and EN[12]==0"|"0"|""|0|0|6|0
+# Wenn Beschattung sich ändert und Automatik aktiv ist: Fahre auf neuen SN[2]
+5012|0|"EC[2] and EN[3]==1 and SN[5]>0"|"SN[2]"|""|1|0|1|0
+
+
+#--------------------------------------------------
+# Lamellennachführung ? Trigger: Inklinationsänderung (EC[1])
+#--------------------------------------------------
+
+5012|0|"EC[1] and SN[6]==0 and SN[3]==1 and EN[2]==1 and EN[3]==1 and EN[12]==0 and SN[5]>0"|"round(SN[2])"|""|1|0|1|0
+5012|0|"EC[1] and SN[6]==0 and SN[3]==1 and EN[2]==0 and EN[3]==1 and EN[12]==0 and SN[5]>0"|"EN[7]"|""|1|0|1|0
+5012|0|"EC[1] and SN[6]==0 and SN[3]==1 and EN[2]==1 and EN[3]==1 and EN[12]>0 and abs(SN[2]-SN[1])>=EN[4] and SN[5]>0"|"round(SN[2])"|""|1|0|1|0
+
+
+#--------------------------------------------------
+# Lamellennachführung ? Trigger: Beschattung ändert sich (EC[2])
+#--------------------------------------------------
+
+5012|0|"EC[2] and SN[6]==0 and EN[2]==0 and EN[3]==1 and SN[5]>0"|"EN[7]"|""|1|0|1|0
+5012|0|"EC[2] and SN[6]==1 and EN[2]==0 and EN[3]==1"|"EN[7]"|""|1|0|1|0
+5012|0|"EC[2] and SN[6]==1 and EN[2]==0 and EN[3]==1"|"EN[7]"|""|0|0|7|0
+5012|0|"EC[2] and EN[2]==0 and EN[3]==1 and EN[11]==1 and SN[5]>0"|"0"|""|3|0|3|0
+
+
+#--------------------------------------------------
+# Automatik-Flag zurücksetzen (nur wenn SN[6]==0 und Lamelle nicht bei 100%)
+# Korrigierte Manuell-Vorrang-Erkennung (and not EC[2])
+#--------------------------------------------------
+
+# Erkennt manuelle Verstellung bei Beschattung EIN (ignoriert den Umschaltmoment)
+5012|0|"EN[12]>0 and SN[6]==0 and EN[12]<98 and EN[2]==1 and abs(EN[12]-SN[2])<=EN[4] and not EC[2]"|"1"|""|0|0|5|0
+
+# Erkennt manuelle Verstellung bei Beschattung AUS (ignoriert den Umschaltmoment)
+5012|0|"EN[12]>0 and SN[6]==0 and EN[12]<98 and EN[2]==0 and abs(EN[12]-EN[7])<=EN[4] and not EC[2]"|"1"|""|0|0|5|0
+
+# Die gleichen Ergänzungen für den Behang (EN[12]==0)
+5012|0|"EN[12]==0 and SN[6]==0 and EN[2]==1 and abs(EN[10]-EN[9])<=EN[4] and not EC[2]"|"1"|""|0|0|5|0
+5012|0|"EN[12]==0 and SN[6]==0 and EN[2]==0 and EN[10]<=EN[4] and not EC[2]"|"1"|""|0|0|5|0
+
+#--------------------------------------------------
+# Timeout
+#--------------------------------------------------
+
+5012|0|"SN[6]==1"|"0"|"180"|0|0|6|0
+
+
+#--------------------------------------------------
+# Ausgang: Automatik-Flag (Debugging pro Verschattung)
+# Gibt SN[5] kontinuierlich auf Ausgang 5 aus, damit der Automatik-
+# Status je Beschattung ohne Statustext-Parsing beobachtet werden kann
+#--------------------------------------------------
+
+5012|0|""|"3*int(EN[3]==1 and EN[2]==1 and SN[5]>0)+2*int(EN[3]==1 and EN[2]==0 and EN[12]>0 and SN[4]==0 and SN[5]>0)"|""|5|0|0|0
+
+
+#--------------------------------------------------
+# Statustext
+#--------------------------------------------------
+
+5012|0|""|"''+str(int(SN[2]))+' A:'+str(int(SN[5]))+' S3:'+str(int(SN[3]))+' S4:'+str(int(SN[4]))+' S1:'+str(int(SN[1]))+' S6:'+str(int(SN[6]))+' S7:'+str(int(SN[7]))+' Li:'+str(int(EN[12]))"|""|4|0|0|0
