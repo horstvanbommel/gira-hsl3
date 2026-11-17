@@ -1,0 +1,42 @@
+{
+  "module": {
+    "category": "Monitoring",
+    "context": "HSL3UptimeKumaContext",
+    "id": "10802",
+    "name": "Uptime Kuma Status",
+    "hsl_filename": "10802_uptimekuma_status.hsl",
+    "version": "1.0",
+    "inputs": [
+      { "type": "string", "identifier": "url", "init_value": "", "label": "Uptime Kuma URL" },
+      { "type": "string", "identifier": "api_key", "init_value": "", "label": "API-Key" },
+      { "type": "number", "identifier": "intervall", "init_value": "60", "label": "Abfrageintervall (s)" },
+      { "type": "number", "identifier": "trigger", "init_value": "0", "label": "Abfrage auslösen" }
+    ],
+    "outputs": [
+      { "type": "number", "identifier": "fehler", "init_value": 0, "label": "Fehler" },
+      { "type": "number", "identifier": "anzahl", "init_value": 0, "label": "Anzahl gestörter Monitore" },
+      { "type": "string", "identifier": "namen", "init_value": "", "label": "Gestörte Monitore" }
+    ],
+    "stores": [],
+    "timers": [ { "identifier": "timer_poll" } ],
+    "scripts": [ { "filename": "hsl3_10802_uptimekuma_status.py" } ],
+    "translations": [
+      {
+        "language": "de",
+        "name": "Uptime Kuma Status",
+        "category": "Monitoring",
+        "translation_inputs": [
+          { "label": "Uptime Kuma URL" },
+          { "label": "API-Key" },
+          { "label": "Abfrageintervall (s)" },
+          { "label": "Abfrage auslösen" }
+        ],
+        "translation_outputs": [
+          { "label": "Fehler" },
+          { "label": "Anzahl gestörter Monitore" },
+          { "label": "Gestörte Monitore" }
+        ]
+      }
+    ]
+  }
+}

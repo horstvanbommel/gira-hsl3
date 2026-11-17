@@ -241,6 +241,7 @@ die Gira-Beispiele belegt):
 | ID    | Verzeichnis (`src/...`)              | Beschreibung |
 |-------|---------------------------------------|--------------|
 | 10800 | `src/openmeteo_regenvorhersage/`     | OpenMeteo-Wetteranbindung: Regenmenge (mm) heute/morgen/Woche anhand von `lat`/`lng` |
+| 10802 | `src/uptimekuma_status/`             | Uptime Kuma `/metrics` (API-Key): Fehler-Flag, Anzahl und Namen gestörter Monitore (Maintenance = OK) |
 
 ## Referenzbeispiele
 
